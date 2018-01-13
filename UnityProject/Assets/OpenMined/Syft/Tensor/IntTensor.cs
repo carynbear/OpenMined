@@ -222,6 +222,42 @@ namespace OpenMined.Syft.Tensor
             return result;
         }
 
+		public IntTensor Neg(bool inline = false, IntTensor result = null)
+		{
+			if (dataOnGpu)
+			{
+
+				if (!inline) {
+					result = factory.Create(this.shape);
+
+					result.Gpu(shader);
+
+					int kernel_id = shader.FindKernel("NegateInt");
+
+					shader.SetBuffer(kernel_id, "NegateIntData", this.DataBuffer);
+					shader.SetBuffer(kernel_id, "NegateIntResult", result.DataBuffer);
+
+					shader.Dispatch(kernel_id, this.size, 1, 1);
+
+					return result;
+				} else {
+					result = this;
+
+					int kernel_id = shader.FindKernel("NegateInt_");
+
+					shader.SetBuffer(kernel_id, "NegateIntData_", result.DataBuffer);
+
+					shader.Dispatch(kernel_id, this.size, 1, 1);
+
+					return result;
+				}
+			}
+			result = this;
+			if (!inline) result = factory.Create(this.shape);
+			result.Data = data.AsParallel().Select(x => -x).ToArray();
+			return result;
+		}
+
         public int Trace()
         {
             if ((shape.Length != 2) || (shape[0] != shape[1]))
@@ -363,6 +399,20 @@ namespace OpenMined.Syft.Tensor
                     }
                     return "param not found or not configured with a getter";
                 }
+
+				case "neg":
+				{
+					Debug.LogFormat("neg");
+					var result = Neg();
+					return result.Id.ToString();
+				}
+
+				case "neg_":
+				{
+					Debug.LogFormat("neg_");
+					Neg(inline: true);
+					return Id.ToString();
+				}
                     
                 case "to_numpy":
                 {

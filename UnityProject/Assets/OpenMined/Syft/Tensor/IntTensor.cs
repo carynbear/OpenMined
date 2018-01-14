@@ -21,6 +21,7 @@ namespace OpenMined.Syft.Tensor
         // kernel pointers
         [SerializeField] 
         private static int AddElemIntKernel;
+        private static int NegateKernel;
 
 
         public IntTensor()
@@ -143,6 +144,7 @@ namespace OpenMined.Syft.Tensor
         public void initShaderKernels()
         {
             //AddElemIntKernel = this.shader.FindKernel("AddElemInt");
+//            NegateKernel = this.shader.FindKernel("NegateInt");
         }
 
         public IntTensor Copy()
@@ -258,6 +260,16 @@ namespace OpenMined.Syft.Tensor
 			return result;
 		}
 
+        public bool Equal(IntTensor x, bool inline = false)
+        {
+            if (dataOnGpu)
+            {
+                throw new NotImplementedException();
+            }
+
+            return this.Shape.SequenceEqual(x.Shape) && data.AsParallel().SequenceEqual(x.Data.AsParallel());
+        }
+        
         public int Trace()
         {
             if ((shape.Length != 2) || (shape[0] != shape[1]))
@@ -267,7 +279,7 @@ namespace OpenMined.Syft.Tensor
             {
                 throw new NotImplementedException();
             }
-
+            
             var stride = strides[0] + strides[1];
             return Enumerable.Range(0, shape.Min()).AsParallel().Select(i => this[i * stride]).Sum();
         }
@@ -336,6 +348,12 @@ namespace OpenMined.Syft.Tensor
                     Debug.LogFormat("add_scalar_");
                     this.Add(int.Parse(msgObj.tensorIndexParams[0]), inline: true);
                     return this.id + "";
+                }
+                case "equal":
+                {
+                    var tensor_1 = factory.Get(int.Parse(msgObj.tensorIndexParams[0]));
+                    var tensor_2 = factory.Get(int.Parse(msgObj.tensorIndexParams[1]));
+                    return Convert.ToString(tensor_1.Equal(tensor_2));
                 }
                 case "get":
                 {
